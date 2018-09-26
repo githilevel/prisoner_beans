@@ -56,20 +56,24 @@ public:
 
 	void pick_range(int& pmin, int& pmax) const
 	{
-		if (vecpick.size() <= 1 ) {
+		auto idx = vecpick.size() + 1;
+		if (idx <= 2){
 			pmin = 1;
 			pmax = max(curmax, (beannum + 1) / 2) - 1;
+		}else if (idx == prinum) {
+			if( (curmax - curmin) > 1 and beannum > curmin){
+				pmin = curmin + 1;
+			}else{
+				pmin = curmin;
+			}
+			pmax = pmin;
 		}else{
-			pmin = curmin + 1;
-			pmax = curmax - 1;
+			pmin = min(curmin + 1, curmax - 1);
+			pmax = max(curmin + 1, curmax - 1);
 		}
 
 		pmax = min(pmax, beannum);
-
-		if (pmin > pmax or pmin > beannum) {
-			pmin = 0;
-			pmax = beannum;
-		}
+		pmin = min(pmin, pmax);
 	}
 
 private:

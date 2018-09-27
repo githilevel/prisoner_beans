@@ -4,112 +4,91 @@
 #include <vector>
 using namespace std;
 
-void playgame(int pn, int bn);
+#include "game.h"
+
+void playgame(int pn, int bn, vector<int> picked);
 
 int main(int argc, char** argv)
 {
-	if (argc >= 3) {
+	int minargc = 3;
+	if (argc >= minargc) {
 		int pn, bn;
 		pn = atoi(argv[1]);
 		bn = atoi(argv[2]);
 
 		cout << "囚犯：" << pn << "\t豆子：" << bn << endl;
 
-		playgame(pn, bn);
+		vector<int> picked;
+		
+		if (argc > minargc) {
+			cout<<"前置：";
+			for(int i = minargc; i < argc; i++){
+				int num = atoi(argv[i]);
+				picked.push_back(num);
+				cout<<num<<' ';
+			}
+			cout<<endl;
+		}
+
+		playgame(pn, bn, picked);
 	}
+
+	return 0;
 }
 
-class Game
-{
-public:
-	Game(int pn, int bn)
-		:prinum(pn), beantotal(bn), beannum(bn), curmin(bn), curmax(0){}
+using Games = vector<Game>;
+Games next_round(const Game& game, int& count);
+void fliter(int& maxscore, int idx, Games& games, const Game& game);
 
-	using Result = vector<int>;
-
-	bool pick_beans(int bn)
-	{
-		if (vecpick.size() < prinum and bn <= beannum){
-			vecpick.push_back(bn);
-			beannum -= bn;
-			curmin = min(curmin, bn);
-			curmax = max(curmax, bn);
-
-			if (vecpick.size() == prinum) {
-				int idx = 0;
-				for (int& bn : vecpick){
-					idx++;
-					if (bn == curmin or bn == curmax) {
-						result.push_back(idx);
-					}
-				}
-				return true;
-			}
-		}
-		return false;
-	}
-
-	const Result& get_result() const
-	{
-		return result;
-	}
-
-	void pick_range(int& pmin, int& pmax) const
-	{
-		auto idx = vecpick.size() + 1;
-		if (idx <= 2){
-			pmin = 1;
-			pmax = max(curmax, (beannum + 1) / 2) - 1;
-		}else if (idx == prinum) {
-			if( (curmax - curmin) > 1 and beannum > curmin){
-				pmin = curmin + 1;
-			}else{
-				pmin = curmin;
-			}
-			pmax = pmin;
-		}else{
-			pmin = min(curmin + 1, curmax - 1);
-			pmax = max(curmin + 1, curmax - 1);
-		}
-
-		pmax = min(pmax, beannum);
-		pmin = min(pmin, pmax);
-	}
-
-private:
-	int prinum;
-	int beantotal;
-
-	vector<int> vecpick;
-	int beannum;
-	int curmin;
-	int curmax;
-	Result result;
-};
-
-void next_round(const Game& game, int& count);
-
-void playgame(int pn, int bn)
+void playgame(int pn, int bn, vector<int> picked)
 {
 	Game game = {pn, bn};
 
-	int all_live_count = 0;
+	for(auto& x : picked){
+		game.pick_beans(x);
+	}
 
-	next_round(game, all_live_count);
+	int all_count = 0;
+	auto games = next_round(game, all_count);
 
-	cout<<all_live_count<<endl;
+	cout<<"遍历"<<all_count<<"种可能性，筛选出最佳方案："<<endl;
+	for(auto& game:games){
+		game.print_result();
+		cout<<endl;
+	}
+	cout<<"共"<<games.size()<<"种"<<endl;
 }
 
-void next_round(const Game& game, int& count)
+Games next_round(const Game& game, int& count)
 {
 	int pmin, pmax;
 	game.pick_range(pmin, pmax);
+
+	Games games;
+	int maxscore = 0;
+	int idx = game.cur_idx() + 1;
+
 	for (int k = pmin; k <= pmax; k++){
 		Game g = game;
 		if (g.pick_beans(k)){
 			count++;
+			fliter(maxscore, idx, games, g);
 		}else{
-			next_round(g, count);
+			auto subgames = next_round(g, count);
+			for_each(subgames.begin(), subgames.end(), [&](const Game& sg){fliter(maxscore, idx, games, sg);});
 		}
+	}
+
+	return games;
+}
+
+void fliter(int& maxscore, int idx, Games& games, const Game& game)
+{
+	auto score = game.result_score(idx);
+	if (score > maxscore) {
+		maxscore = score;
+		games = {game};
+	}else if(score == maxscore){
+		games.push_back(move(game));
 	}
 }

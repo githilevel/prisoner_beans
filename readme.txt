@@ -1,2 +1,2 @@
 sh build.sh
-./prisoner_beans.out 5 100
+./prisoner_beans.o 5 100
